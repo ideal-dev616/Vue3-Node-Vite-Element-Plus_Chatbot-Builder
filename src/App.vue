@@ -1,10 +1,10 @@
-<script setup>
-import drawflow from './components/drawflow.vue'
-</script>
 
 <template>
    <drawflow/>
 </template>
+<script setup>
+import drawflow from './components/drawflow.vue'
+</script>
 
 <style>
 *,

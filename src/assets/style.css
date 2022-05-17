@@ -44,7 +44,10 @@
 
 .parent-node .drawflow-delete {
     display: none !important;
-    line-height: 24px !important;
+}
+
+.drawflow-delete {
+    line-height: 24.5px !important;
 }
 
 .drawflow .drawflow-node.selected .drawflow_content_node .header {
