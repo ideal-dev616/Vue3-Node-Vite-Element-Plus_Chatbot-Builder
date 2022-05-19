@@ -1,9 +1,9 @@
 <template>
-  <div ref="el" class="connect-text-wrapper" :style="`left: ${Math.abs(connectionXCenter - width/2)}px; top: ${connectionYCenter - height/2}px`">
+  <div ref="el" class="connect-text-wrapper" :style="`left: ${Math.abs(xCenter - width/2)}px; top: ${yCenter - height/2}px`">
     <input 
     class="title reactive" 
     type='text' 
-    value=""
+    placeholder="Type something"
     @keyup="onKeyUp">
   </div>
 </template>
@@ -11,7 +11,7 @@
 <script>
 
 export default {
-    props: [ 'text', 'connectionXCenter', 'connectionYCenter' ],
+    props: [ 'text', 'xCenter', 'yCenter' ],
     components: {
     },
     data() {
@@ -22,12 +22,12 @@ export default {
     },
     mounted() {
       this.updateSize();
-      console.log("cConnection Text Size => w: ", this.width + ", h: " + this.height);
     },
     methods: {
       updateSize(){
         this.width = this.$refs.el.clientWidth;
         this.height = this.$refs.el.clientHeight;
+        console.log("connection text updated");
       },
       onKeyUp(e){
         if(e.target.value.length < 4){

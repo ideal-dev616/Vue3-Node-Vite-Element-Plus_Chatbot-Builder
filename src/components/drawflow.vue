@@ -13,13 +13,13 @@
         </ul>
       </el-aside>
       <el-main>
-        <el-button type="primary" @click="generateLineText" class="line-option" v-if="lineOptionVisible" :style="{top:lineOptionTop, left:lineOptionLeft}">
+        <el-button type="primary" @click="generateLineText" class="line-option" v-if="lineOptionVisible" :style="`top: ${lineOptionTop}px; left: ${lineOptionLeft}px`">
           <svg xmlns="http://www.w3.org/2000/svg" width="30px" height="20px" viewBox="0 0 16 16"><g fill="none" fill-rule="evenodd"><path d="M0 0h16v16H0z"></path><path fill="#66b1ff" d="M12.63 13c.097 0 .194.023.281.066l1.74.87a.63.63 0 01.001 1.127l-1.74.87A.63.63 0 0112 15.37V15H1.5a.5.5 0 010-1l10.5-.001v-.37a.63.63 0 01.63-.629zM8.168 0c.508 0 .96.32 1.13.798l3.653 10.268a.7.7 0 01-.659.934h-.115a1.2 1.2 0 01-1.143-.834l-.739-2.308a.6.6 0 00-.571-.417H6.242a.601.601 0 00-.573.42l-.72 2.298A1.2 1.2 0 013.804 12h-.102a.693.693 0 01-.653-.926L6.703.798A1.2 1.2 0 017.833 0h.335zm-.246 2.52a.284.284 0 00-.196.2c-.125.46-.242.847-.35 1.163l-.768 2.326a.6.6 0 00.569.788h1.665a.6.6 0 00.57-.787l-.81-2.466a17.903 17.903 0 01-.267-.837l-.057-.193a.286.286 0 00-.356-.194z"></path></g></svg>
         </el-button>
         <div id="drawflow" @drop="drop($event)" @dragover="allowDrop($event)">
         </div>
-        <div v-for="connect in connectTextList" :key="connect.index">
-          <CConnectionText :text="connect.text" :connectionXCenter="connectionXCenter" :connectionYCenter="connectionYCenter" />
+        <div v-for="connection in connectionTextList" :key="connection.index">
+          <CConnectionText :text="connection.text" :xCenter="connection.pos.xCenter" :yCenter="connection.pos.yCenter" />
         </div>
       </el-main>
     </el-container>
@@ -59,9 +59,6 @@ export default {
   components: {
     CConnectionText 
   },
-  methods: {
-
-  },
   setup() {
     const listNodes = readonly([
       {
@@ -88,50 +85,55 @@ export default {
     ])
    
     const lineOptionVisible = ref(false)
-    const lineOptionTop = ref("100px")
-    const lineOptionLeft = ref("800px")
+    const lineOptionTop = ref(0)
+    const lineOptionLeft = ref(0)
     const selectedNodeId = ref(-1)
     const nodeSelected = ref(false)
-    const connectionSelected = ref(false)
-    const selectedConnectionIds = shallowRef([])
-    const connectionXCenter = ref(-1)
-    const connectionYCenter = ref(-1)
+    const selectedConnection = shallowRef({})
+    const connectionTextList = shallowRef([])
+    const relatedConnectionList = shallowRef([])
+
     const editor = shallowRef({})
-    const dialogVisible = ref(false)
     const dialogData = ref({})
+    const dialogVisible = ref(false)
+
     const Vue = { version: 3, h, render };
     const internalInstance = getCurrentInstance()
-    const posCenter = shallowRef({ x: 400, y: 300 })
-    const connectTextList = shallowRef([
-      // {
-      //   id: "",
-      //   text: "123",
-      //   pos: {
-      //     x: 400,
-      //     y: 300,
-      //   },
-      // }
-    ])
     internalInstance.appContext.app._context.config.globalProperties.$df = editor;
    
     function exportEditor() {
       dialogData.value = editor.value.export();
       dialogVisible.value = true;
     }
+
+    function getCenterPos(output_id, input_id) {
+      const nodeData = editor.value.drawflow.drawflow.Home.data;
+      console.log("nodeData =>", nodeData);
+      let posX = [], posY = [];
+      Object.keys(nodeData).forEach((key) => {
+        if(key === output_id || key === input_id){
+          posX.push(nodeData[key].pos_x);
+          posY.push(nodeData[key].pos_y);
+        }
+      });
+      const xCenter = 396 + Math.min(...posX) + Math.abs(posX[0] - posX[1]) / 2;
+      const yCenter = 130 + Math.min(...posY) + Math.abs(posY[0] - posY[1]) / 2;
+      return {xCenter, yCenter};
+    }
     
     function generateLineText() {
-      console.log("generate line text");
-      let text = "text";
-      for(let i = 0; i < connectTextList.value.length; i++){
-        text += "OK!";
-      }
-
+      const output_id = selectedConnection.value.output_id;
+      const input_id = selectedConnection.value.input_id;
       const newObject = {
-        text: text,
+        text: "",
+        connection: {
+          output_id,
+          input_id,
+        },
+        pos: getCenterPos(output_id, input_id) //xCenter, yCenter
       }
-
-      connectTextList.value = [
-        ...connectTextList.value,
+      connectionTextList.value = [
+        ...connectionTextList.value,
         newObject,
       ];
     }
@@ -267,50 +269,65 @@ export default {
 
       editor.value.on("connectionSelected", function(connection){ // data.output_id, data.input_id, data.output_class, data.input_class
         lineOptionVisible.value = true;
-        selectedConnectionIds.value.push(connection.output_id, connection.input_id);
+        selectedConnection.value = connection;
         const nodeData = editor.value.drawflow.drawflow.Home.data;
         let posX = [], posY = [];
-        Object.keys(nodeData).map((key) => {
+        Object.keys(nodeData).forEach((key) => {
           if(key === connection.output_id || key === connection.input_id){
             posX.push(nodeData[key].pos_x);
             posY.push(nodeData[key].pos_y);
           }
         });
-        lineOptionTop.value = Math.min(...posY) + 40 + "px";
-        lineOptionLeft.value = 370 + Math.min(...posX) + (Math.max(...posX) - Math.min(...posX)) / 2 + "px";
-
-        connectionXCenter.value = 396 + Math.min(...posX) + Math.abs(posX[0] - posX[1]) / 2;
-        connectionYCenter.value = 130 + Math.min(...posY) + Math.abs(posY[0] - posY[1]) / 2;
+        lineOptionTop.value = Math.min(...posY) + 40;
+        lineOptionLeft.value = 370 + (Math.max(...posX) + Math.min(...posX)) / 2;
       })
 
       editor.value.on("connectionUnselected", function(id){
-        console.log("connectionUnselected => ", id);
         lineOptionVisible.value = false;
       });
 
       editor.value.on("nodeSelected", function(id){
-        console.log("nodeSelected => ", id);
-        selectedNodeId.value = id;
         nodeSelected.value = true;
-        lineOptionVisible.value = true;
+        if(Object.keys(selectedConnection.value).length > 0){
+          lineOptionVisible.value = true;
+        }
+        selectedNodeId.value = id;
       });
 
       editor.value.on("nodeUnselected", function(id){
-        console.log("nodeUnselected => ", id);
         nodeSelected.value = false;
         lineOptionVisible.value = false;
       });
 
+      editor.value.on("translate", function(translate){
+        console.log("translate =>", translate);
+        connectionTextList.value.forEach(item => {
+          const centerPos = getCenterPos(item.connection.output_id, item.connection.input_id);
+          item.pos.xCenter = centerPos.xCenter + translate.x;
+          item.pos.yCenter = centerPos.yCenter + translate.y;
+        })
+      });
+
       editor.value.on("mouseMove", function(position){
-        if((nodeSelected.value) && selectedConnectionIds.value.includes(selectedNodeId.value)){
+        const isEmpty = Object.keys(selectedConnection.value).length > 0;
+        if(nodeSelected.value){
           const nodeData = editor.value.drawflow.drawflow.Home.data;
           let posX = [], posY = [];
-          posX.push(nodeData[selectedConnectionIds.value[0]].pos_x, nodeData[selectedConnectionIds.value[1]].pos_x);
-          posY.push(nodeData[selectedConnectionIds.value[0]].pos_y, nodeData[selectedConnectionIds.value[1]].pos_y);
-          lineOptionTop.value = Math.min(...posY) + 40 + "px";
-          lineOptionLeft.value = 370 + (Math.max(...posX) + Math.min(...posX)) / 2 + "px";
-          connectionXCenter.value = 396 + Math.min(...posX) + Math.abs(posX[0] - posX[1]) / 2;
-          connectionYCenter.value = 130 + Math.min(...posY) + Math.abs(posY[0] - posY[1]) / 2;
+          const output_id = selectedConnection.value.output_id;
+          const input_id = selectedConnection.value.input_id;
+          posX.push(nodeData[output_id].pos_x, nodeData[input_id].pos_x);
+          posY.push(nodeData[output_id].pos_y, nodeData[input_id].pos_y);
+          lineOptionTop.value = Math.min(...posY) + 40;
+          lineOptionLeft.value = 370 + (Math.max(...posX) + Math.min(...posX)) / 2;
+
+          console.log("mouseMove =>", connectionTextList);
+          connectionTextList.value.forEach(item => {
+            const centerPos = getCenterPos(item.connection.output_id, item.connection.input_id);
+            if(item.connection.output_id === selectedNodeId.value || item.connection.input_id === selectedNodeId.value){
+              item.pos.xCenter = centerPos.xCenter;
+              item.pos.yCenter = centerPos.yCenter;
+            }
+          })
         }
       });
       
@@ -378,7 +395,7 @@ export default {
     })
 
     return {
-      exportEditor, generateLineText, listNodes, drag, drop, allowDrop, dialogVisible, dialogData, lineOptionVisible, lineOptionTop, lineOptionLeft, nodeSelected, connectionSelected, selectedConnectionIds, selectedNodeId, connectTextList, connectionXCenter, connectionYCenter
+      exportEditor, drag, drop, allowDrop, generateLineText, listNodes, dialogVisible, dialogData, lineOptionVisible, lineOptionTop, lineOptionLeft, nodeSelected, selectedNodeId, selectedConnection, connectionTextList, relatedConnectionList
     }
   }
 }
